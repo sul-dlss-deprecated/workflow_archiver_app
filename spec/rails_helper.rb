@@ -28,6 +28,11 @@ Coveralls.wear!('rails')
 # Checks for pending migration and applies them before tests are run.
 # If you are not using ActiveRecord, you can remove this line.
 ActiveRecord::Migration.maintain_test_schema!
+$sequel_db = Sequel.sqlite
+
+WorkflowArchiver.config.configure do
+  dor_service_uri 'http://example.com'
+end
 
 RSpec.configure do |config|
   # Remove this line if you're not using ActiveRecord or ActiveRecord fixtures
@@ -57,4 +62,43 @@ RSpec.configure do |config|
   config.filter_rails_from_backtrace!
   # arbitrary gems may also be filtered via:
   # config.filter_gems_from_backtrace("gem name")
+  config.before(:all) do
+    $sequel_db.create_table? :workflow do
+      primary_key :id
+      String :druid
+      String :datastream
+      String :process
+      String :status
+      String :error_msg
+      String :error_txt
+      DateTime :datetime
+      Integer :attempts
+      Decimal :elapsed
+      String :lifecycle
+      String :repository
+      String :note
+      Integer :priority
+      String :lane_id
+    end
+
+    $sequel_db.create_table? :workflow_archive do
+      primary_key :id
+      String :druid
+      String :datastream
+      String :process
+      String :status
+      String :error_msg
+      String :error_txt
+      DateTime :datetime
+      Integer :attempts
+      Decimal :elapsed
+      String :lifecycle
+      String :repository
+      DateTime :archive_dt
+      Integer :version
+      String :note
+      Integer :priority
+      String :lane_id
+    end
+  end
 end
