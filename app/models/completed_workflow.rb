@@ -1,12 +1,14 @@
 class CompletedWorkflow
-  attr_accessor :repository, :druid, :datastream, :version
+  attr_accessor :repository, :druid, :datastream
 
-  def setup_from_query(row_hash)
-    self.repository = row_hash[:repository]
-    self.druid      = row_hash[:druid]
-    self.datastream = row_hash[:datastream]
-    self.version    = current_version_from_dor
-    self
+  def initialize(attributes = {})
+    @repository = attributes[:repository]
+    @druid      = attributes[:druid]
+    @datastream = attributes[:datastream]
+  end
+
+  def version
+    @version ||= current_version_from_dor
   end
 
   def to_bind_hash
@@ -22,7 +24,7 @@ class CompletedWorkflow
       return to_enum(:all) unless block_given?
 
       connection.fetch(completed_query) do |row|
-        yield row
+        yield new(row)
       end
     end
 
@@ -37,6 +39,7 @@ class CompletedWorkflow
       Sequel.connect(WorkflowArchiver.config.db_uri)
     end
 
+    # TODO: Move all SQL somewhere else
     def completed_query
       <<-EOSQL
        select distinct repository, datastream, druid
@@ -57,6 +60,7 @@ class CompletedWorkflow
 
   private
 
+  # TODO: Change db_uri configuration from WorkflowArchiver to rails-config
   def current_version_from_dor
     Faraday.get WorkflowArchiver.config.dor_service_uri + "/dor/v1/objects/#{druid}/versions/current"
   rescue Faraday::Error::ClientError => ise

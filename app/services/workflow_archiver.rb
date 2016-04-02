@@ -120,20 +120,6 @@ class WorkflowArchiver
     end
   end
 
-  # @param [Array<Hash>] rows result from #find_completed_objects
-  # @return [Array<ArchiveCriteria>] each result mapped to an ArchiveCriteria object
-  def map_result_to_criteria(rows)
-    rows.lazy.map do |r|
-      begin
-        CompletedWorkflow.new.setup_from_query(r)
-      rescue => e
-        LyberCore::Log.error("Skipping archiving of #{r['DRUID']}")
-        LyberCore::Log.error("#{e.inspect}\n" + e.backtrace.join("\n"))
-        nil
-      end
-    end.reject { |r| r.nil? }
-  end
-
   # Does the work of finding completed objects and archiving the rows
   def archive
     objs = CompletedWorkflow.all
@@ -143,8 +129,7 @@ class WorkflowArchiver
       exit true
     end
     LyberCore::Log.info "Found #{objs.size} completed workflows"
-    archiving_criteria = map_result_to_criteria(objs)
-    archive_rows(archiving_criteria)
+    archive_rows(objs)
 
     LyberCore::Log.info "DONE! Processed #{@archived.to_s} objects with #{@errors.to_s} errors" if @errors < 3
   end
