@@ -1,4 +1,7 @@
 class CompletedWorkflow
+  WORKFLOW_TABLE = 'workflow'.freeze
+  WORKFLOW_ARCHIVE_TABLE = 'workflow_archive'.freeze
+
   attr_accessor :repository, :druid, :datastream
 
   def initialize(attributes = {})
@@ -15,6 +18,16 @@ class CompletedWorkflow
     [:repository, :druid, :datastream].each_with_object({}) do |meth, hash|
       hash[meth] = send(meth) if send(meth)
     end
+  end
+
+  def to_delete_sql
+    delete_sql = "delete from #{WORKFLOW_TABLE} where druid = :druid and datastream = :datastream "
+    delete_sql << if repository
+                    'and repository = :repository'
+                  else
+                    'and repository IS NULL'
+                  end
+    delete_sql
   end
 
   class << self

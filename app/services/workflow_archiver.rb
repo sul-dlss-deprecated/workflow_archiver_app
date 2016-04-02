@@ -101,14 +101,10 @@ class WorkflowArchiver
       and #{@workflow_table}.datastream = :datastream
     EOSQL
 
-    delete_sql = "delete from #{@workflow_table} where druid = :druid and datastream = :datastream "
-
     if(workflow_info.repository)
       copy_sql += "and #{@workflow_table}.repository = :repository"
-      delete_sql += 'and repository = :repository'
     else
       copy_sql += "and #{@workflow_table}.repository IS NULL"
-      delete_sql += 'and repository IS NULL'
     end
 
     conn.transaction do
@@ -116,7 +112,7 @@ class WorkflowArchiver
 
       LyberCore::Log.debug '  Removing old workflow rows'
 
-      conn.run Sequel::SQL::PlaceholderLiteralString.new(delete_sql, workflow_info.to_bind_hash)
+      conn.run Sequel::SQL::PlaceholderLiteralString.new(workflow_info.to_delete_sql, workflow_info.to_bind_hash)
     end
   end
 
