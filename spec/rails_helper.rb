@@ -30,6 +30,8 @@ Coveralls.wear!('rails')
 ActiveRecord::Migration.maintain_test_schema!
 $sequel_db = Sequel.sqlite
 
+CompletedWorkflow.connection = $sequel_db
+
 WorkflowArchiver.config.configure do
   dor_service_uri 'http://example.com'
 end

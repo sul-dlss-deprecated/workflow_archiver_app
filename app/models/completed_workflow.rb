@@ -15,6 +15,46 @@ class CompletedWorkflow
     end
   end
 
+  class << self
+    attr_writer :connection
+
+    def all
+      return to_enum(:all) unless block_given?
+
+      connection.fetch(completed_query) do |row|
+        yield row
+      end
+    end
+
+    def connection
+      @connection ||= default_connection
+    end
+
+    private
+
+    # TODO: Change db_uri configuration from WorkflowArchiver to rails-config
+    def default_connection
+      Sequel.connect(WorkflowArchiver.config.db_uri)
+    end
+
+    def completed_query
+      <<-EOSQL
+       select distinct repository, datastream, druid
+       from workflow w1
+       where w1.status in ('completed', 'skipped')
+       and not exists
+       (
+          select *
+          from workflow w2
+          where w1.repository = w2.repository
+          and w1.datastream = w2.datastream
+          and w1.druid = w2.druid
+          and w2.status not in ('completed', 'skipped')
+       )
+      EOSQL
+    end
+  end
+
   private
 
   def current_version_from_dor

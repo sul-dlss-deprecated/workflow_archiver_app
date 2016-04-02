@@ -120,32 +120,6 @@ class WorkflowArchiver
     end
   end
 
-  # Finds objects where all workflow steps are complete
-  # @return [Array<Hash{String=>String}>] each hash returned has the following keys:
-  #   {"REPOSITORY"=>"dor", "DRUID"=>"druid:345", "DATASTREAM"=>"googleScannedBookWF"}
-  def find_completed_objects
-    return to_enum(:find_completed_objects) unless block_given?
-
-    completed_query = <<-EOSQL
-     select distinct repository, datastream, druid
-     from workflow w1
-     where w1.status in ('completed', 'skipped')
-     and not exists
-     (
-        select *
-        from workflow w2
-        where w1.repository = w2.repository
-        and w1.datastream = w2.datastream
-        and w1.druid = w2.druid
-        and w2.status not in ('completed', 'skipped')
-     )
-    EOSQL
-
-    conn.fetch(completed_query) do |row|
-      yield row
-    end
-  end
-
   # @param [Array<Hash>] rows result from #find_completed_objects
   # @return [Array<ArchiveCriteria>] each result mapped to an ArchiveCriteria object
   def map_result_to_criteria(rows)
@@ -162,7 +136,7 @@ class WorkflowArchiver
 
   # Does the work of finding completed objects and archiving the rows
   def archive
-    objs = find_completed_objects
+    objs = CompletedWorkflow.all
 
     if objs.none?
       LyberCore::Log.info 'Nothing to archive'

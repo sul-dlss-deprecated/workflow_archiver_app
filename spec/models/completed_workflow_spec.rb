@@ -35,4 +35,12 @@ describe CompletedWorkflow do
       expect(subject.setup_from_query({})).to be_a described_class
     end
   end
+
+  describe 'class methods' do
+    describe '#all' do
+      it 'is an enumerator of rows' do
+        expect(described_class.all).to be_a Enumerator
+      end
+    end
+  end
 end
