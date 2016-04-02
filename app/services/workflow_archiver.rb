@@ -3,39 +3,6 @@ require 'confstruct'
 require 'lyber_core'
 require 'sequel'
 
-# Holds the paramaters about the workflow rows that need to be deleted
-ArchiveCriteria = Struct.new(:repository, :druid, :datastream, :version) do
-  # @param [Array<Hash>] List of objects returned from {WorkflowArchiver#find_completed_objects}.  It expects the following keys in the hash
-  def setup_from_query(row_hash)
-    self.repository = row_hash[:repository]
-    self.druid = row_hash[:druid]
-    self.datastream = row_hash[:datastream]
-#    set_current_version
-    self.version = '1'
-    self
-  end
-
-  # Removes version from list of members, then picks out non nil members and builds a hash of column_name => column_value
-  # @return [Hash] Maps column names (in ALL caps) to non-nil column values
-  def to_bind_hash
-    h = {}
-    members.reject { |mem| mem =~ /version/ }.each do |m|
-      h[m] = send(m) if send(m)
-    end
-    h
-  end
-
-  def set_current_version
-    self.version = Faraday.get WorkflowArchiver.config.dor_service_uri + "/dor/v1/objects/#{druid}/versions/current"
-  rescue Faraday::Error::ClientError => ise
-    raise unless ise.inspect =~ /Unable to find.*in fedora/
-    LyberCore::Log.warn ise.inspect.to_s
-    LyberCore::Log.warn "Moving workflow rows with version set to '1'"
-    self.version = '1'
-  end
-
-end
-
 class WorkflowArchiver
   WF_COLUMNS = %w(id druid datastream process status error_msg error_txt datetime attempts lifecycle elapsed repository note priority lane_id)
 
@@ -85,10 +52,10 @@ class WorkflowArchiver
   # @param [String] druid
   # @param [String] datastream
   # @param [String] version
-  def archive_one_datastream(repository, druid, datastream, version)
-    criteria = [ArchiveCriteria.new(repository, druid, datastream, version)]
-    archive_rows criteria
-  end
+  # def archive_one_datastream(repository, druid, datastream, version)
+  #   criteria = [ArchiveCriteria.new(repository, druid, datastream, version)]
+  #   archive_rows criteria
+  # end
 
   # Copies rows from the workflow table to the workflow_archive table, then deletes the rows from workflow
   # Both operations must complete, or they get rolled back
@@ -184,7 +151,7 @@ class WorkflowArchiver
   def map_result_to_criteria(rows)
     rows.lazy.map do |r|
       begin
-        ArchiveCriteria.new.setup_from_query(r)
+        CompletedWorkflow.new.setup_from_query(r)
       rescue => e
         LyberCore::Log.error("Skipping archiving of #{r['DRUID']}")
         LyberCore::Log.error("#{e.inspect}\n" + e.backtrace.join("\n"))

@@ -102,10 +102,9 @@ describe WorkflowArchiver do
   end
 
   describe '#archive_rows' do
-    # before do
-    #   allow_any_instance_of(ArchiveCriteria).to receive(:dor_current_version).at_least(:twice).and_return(1)
-    #   # allow_any_instance_of(Faraday).to receive(:get).at_least(:twice).with(/^#{WorkflowArchiver.config.dor_service_uri}\/dor\/v1\/objects\/integration:/).and_return('1')
-    # end
+    before do
+      allow_any_instance_of(CompletedWorkflow).to receive(:current_version_from_dor).and_return(1)
+    end
 
     it 'copies completed workflow rows to the archive table' do
       expect { subject.archive }.to change { subject.conn.from(:workflow_archive).count }.from(0).to(8)
