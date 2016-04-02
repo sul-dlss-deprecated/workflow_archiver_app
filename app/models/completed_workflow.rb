@@ -1,4 +1,5 @@
 class CompletedWorkflow
+  WF_COLUMNS = %w(id druid datastream process status error_msg error_txt datetime attempts lifecycle elapsed repository note priority lane_id).freeze
   WORKFLOW_TABLE = 'workflow'.freeze
   WORKFLOW_ARCHIVE_TABLE = 'workflow_archive'.freeze
 
@@ -18,6 +19,28 @@ class CompletedWorkflow
     [:repository, :druid, :datastream].each_with_object({}) do |meth, hash|
       hash[meth] = send(meth) if send(meth)
     end
+  end
+
+  def to_copy_sql
+    copy_sql = <<-EOSQL
+      insert into #{WORKFLOW_ARCHIVE_TABLE} (
+        #{wf_column_string},
+        version
+      )
+      select
+        #{wf_archive_column_string},
+        #{version} as version
+      from #{WORKFLOW_TABLE}
+      where #{WORKFLOW_TABLE}.druid =    :druid
+      and #{WORKFLOW_TABLE}.datastream = :datastream
+    EOSQL
+
+    copy_sql << if repository
+                  "and #{WORKFLOW_TABLE}.repository = :repository"
+                else
+                  "and #{WORKFLOW_TABLE}.repository IS NULL"
+                end
+    copy_sql
   end
 
   def to_delete_sql
@@ -72,6 +95,14 @@ class CompletedWorkflow
   end
 
   private
+
+  def wf_column_string
+    WF_COLUMNS.join(",\n")
+  end
+
+  def wf_archive_column_string
+    WF_COLUMNS.map { |col| "#{WORKFLOW_TABLE}.#{col}" }.join(",\n")
+  end
 
   # TODO: Change db_uri configuration from WorkflowArchiver to rails-config
   def current_version_from_dor

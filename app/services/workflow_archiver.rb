@@ -35,16 +35,6 @@ class WorkflowArchiver
     @conn ||= Sequel.connect(@db_uri)
   end
 
-  # @return [String] The columns appended with comma and newline
-  def wf_column_string
-    WF_COLUMNS.join(",\n")
-  end
-
-  # @return [String] The columns prepended with 'w.' and appended with comma and newline
-  def wf_archive_column_string
-    WF_COLUMNS.map { |col| "#{@workflow_table}.#{col}" }.join(",\n")
-  end
-
   # Use this as a one-shot method to archive all the steps of an object's particular datastream
   #   It will connect to the database, archive the rows, then logoff.  Assumes caller will set version (like the Dor REST service)
   # @note Caller of this method must handle destroying of the connection pool
@@ -88,27 +78,9 @@ class WorkflowArchiver
   # @param [ArchiveCriteria] workflow_info contains paramaters on the workflow rows to archive
   def do_one_archive(workflow_info)
     LyberCore::Log.info "Archiving #{workflow_info.inspect}"
-    copy_sql = <<-EOSQL
-      insert into #{@workflow_archive_table} (
-        #{wf_column_string},
-        version
-      )
-      select
-        #{wf_archive_column_string},
-        #{workflow_info.version} as version
-      from #{@workflow_table}
-      where #{@workflow_table}.druid =    :druid
-      and #{@workflow_table}.datastream = :datastream
-    EOSQL
-
-    if(workflow_info.repository)
-      copy_sql += "and #{@workflow_table}.repository = :repository"
-    else
-      copy_sql += "and #{@workflow_table}.repository IS NULL"
-    end
 
     conn.transaction do
-      conn.run Sequel::SQL::PlaceholderLiteralString.new(copy_sql, workflow_info.to_bind_hash)
+      conn.run Sequel::SQL::PlaceholderLiteralString.new(workflow_info.to_copy_sql, workflow_info.to_bind_hash)
 
       LyberCore::Log.debug '  Removing old workflow rows'
 
