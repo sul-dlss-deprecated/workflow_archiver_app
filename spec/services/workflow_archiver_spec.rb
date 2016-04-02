@@ -7,7 +7,7 @@ describe WorkflowArchiver do
   end
 
   before do
-    workflows = subject.conn.from(:workflow)
+    workflows = CompletedWorkflow.connection.from(:workflow)
 
     data = YAML.load <<-EOF
 ---
@@ -80,8 +80,8 @@ describe WorkflowArchiver do
   end
 
   after do
-    subject.conn.from(:workflow).where(Sequel.like(:druid, 'integration:%')).delete
-    subject.conn.from(:workflow_archive).where(Sequel.like(:druid, 'integration:%')).delete
+    CompletedWorkflow.connection.from(:workflow).where(Sequel.like(:druid, 'integration:%')).delete
+    CompletedWorkflow.connection.from(:workflow_archive).where(Sequel.like(:druid, 'integration:%')).delete
   end
 
   describe '#archive_rows' do
@@ -90,10 +90,10 @@ describe WorkflowArchiver do
     end
 
     it 'copies completed workflow rows to the archive table' do
-      expect { subject.archive }.to change { subject.conn.from(:workflow_archive).count }.from(0).to(8)
+      expect { subject.archive }.to change { CompletedWorkflow.connection.from(:workflow_archive).count }.from(0).to(8)
       expect(CompletedWorkflow.all.count).to eq 0
 
-      archived = subject.conn.from(:workflow_archive).to_a
+      archived = CompletedWorkflow.connection.from(:workflow_archive).to_a
 
       expect(archived).to include(hash_including(druid: 'integration:678', datastream: 'sdrIngestWF'))
       expect(archived).not_to include(hash_including(druid: 'integration:678', datastream: 'googleScannedBookWF'))
