@@ -11,6 +11,18 @@ class CompletedWorkflow
     @datastream = attributes[:datastream]
   end
 
+  def archive!
+    LyberCore::Log.info "Archiving #{self}"
+
+    connection.transaction do
+      connection.run Sequel::SQL::PlaceholderLiteralString.new(to_copy_sql, to_bind_hash)
+
+      LyberCore::Log.debug '  Removing old workflow rows'
+
+      connection.run Sequel::SQL::PlaceholderLiteralString.new(to_delete_sql, to_bind_hash)
+    end
+  end
+
   def version
     @version ||= current_version_from_dor
   end
@@ -95,6 +107,10 @@ class CompletedWorkflow
   end
 
   private
+
+  def connection
+    self.class.connection
+  end
 
   def wf_column_string
     WF_COLUMNS.join(",\n")

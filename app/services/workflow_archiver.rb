@@ -55,7 +55,7 @@ class WorkflowArchiver
       tries = 0
       begin
         tries += 1
-        do_one_archive(obj)
+        obj.archive!
         @archived += 1
       rescue => e
         LyberCore::Log.error "Rolling back transaction due to: #{e.inspect}\n" << e.backtrace.join("\n") << "\n!!!!!!!!!!!!!!!!!!"
@@ -73,19 +73,6 @@ class WorkflowArchiver
         end
       end
     end # druids.each
-  end
-
-  # @param [ArchiveCriteria] workflow_info contains paramaters on the workflow rows to archive
-  def do_one_archive(workflow_info)
-    LyberCore::Log.info "Archiving #{workflow_info.inspect}"
-
-    conn.transaction do
-      conn.run Sequel::SQL::PlaceholderLiteralString.new(workflow_info.to_copy_sql, workflow_info.to_bind_hash)
-
-      LyberCore::Log.debug '  Removing old workflow rows'
-
-      conn.run Sequel::SQL::PlaceholderLiteralString.new(workflow_info.to_delete_sql, workflow_info.to_bind_hash)
-    end
   end
 
   # Does the work of finding completed objects and archiving the rows
