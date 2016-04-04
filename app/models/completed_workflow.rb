@@ -13,11 +13,8 @@ class CompletedWorkflow
     LyberCore::Log.info "Archiving #{self}"
 
     connection.transaction do
-      connection.run Sequel::SQL::PlaceholderLiteralString.new(to_copy_sql, to_bind_hash)
-
-      LyberCore::Log.debug '  Removing old workflow rows'
-
-      connection.run Sequel::SQL::PlaceholderLiteralString.new(to_delete_sql, to_bind_hash)
+      copy
+      delete
     end
   end
 
@@ -29,6 +26,15 @@ class CompletedWorkflow
     [:repository, :druid, :datastream].each_with_object({}) do |meth, hash|
       hash[meth] = send(meth) if send(meth)
     end
+  end
+
+  def copy
+    connection.run Sequel::SQL::PlaceholderLiteralString.new(to_copy_sql, to_bind_hash)
+  end
+
+  def delete
+    LyberCore::Log.debug '  Removing old workflow rows'
+    connection.run Sequel::SQL::PlaceholderLiteralString.new(to_delete_sql, to_bind_hash)
   end
 
   class << self
